@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Sender</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .back-button {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #4facfe;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .back-button:hover {
+            background-color: #00c6ff;
+        }
+        .container {
+            display: flex;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        .left-panel, .right-panel {
+            padding: 20px;
+        }
+        .left-panel {
+            width: 40%;
+            background: #f7f7f7;
+            border-right: 1px solid #ddd;
+        }
+        .right-panel {
+            width: 60%;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #4facfe;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #00c6ff;
+        }
+        textarea {
+            resize: none;
+            height: 100px;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+        }
+        .button-group button {
+            width: 48%;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="window.location.href='/sms';">Go to SMS Page</button>
+    <div class="container">
+        <!-- Left Panel: SMTP Settings -->
+        <div class="left-panel">
+            <h2>SMTP Settings</h2>
+            <label for="smtp-host">SMTP Host</label>
+            <input type="text" id="smtp-host" placeholder="e.g., smtp.example.com">
+
+            <label for="username">Username (Email)</label>
+            <input type="email" id="username" placeholder="e.g., user@example.com">
+
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password">
+
+            <label for="from">From (Sender)</label>
+            <input type="email" id="from" placeholder="e.g., sender@example.com">
+
+            <label for="subject">Subject</label>
+            <input type="text" id="subject" placeholder="Enter email subject">
+
+            <div class="button-group">
+                <button id="test-smtp">Test SMTP</button>
+                <button id="send">Send</button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Recipient List and Message -->
+        <div class="right-panel">
+            <h2>Recipient List</h2>
+            <label for="recipients">Emails (comma-separated)</label>
+            <textarea id="recipients" placeholder="e.g., recipient1@example.com, recipient2@example.com"></textarea>
+
+            <h2>Message</h2>
+            <label for="message">Email Message</label>
+            <textarea id="message" placeholder="Type your message here..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('test-smtp').addEventListener('click', async () => {
+            const smtpHost = document.getElementById('smtp-host').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('/test-smtp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ smtpHost, username, password }),
+            });
+
+            const result = await response.json();
+            alert(result.success || result.error);
+        });
+
+        document.getElementById('send').addEventListener('click', async () => {
+            const smtpHost = document.getElementById('smtp-host').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const from = document.getElementById('from').value;
+            const subject = document.getElementById('subject').value;
+            const recipients = document.getElementById('recipients').value;
+            const message = document.getElementById('message').value;
+
+            const response = await fetch('/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ smtpHost, username, password, from, subject, recipients, message }),
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                alert(`Error: ${result.error}`);
+            } else {
+                const { success, failed } = result.results;
+                const successMessage = success.length
+                    ? `Successfully sent to:\n${success.map((r) => `${r.recipient} (Message ID: ${r.messageId})`).join('\n')}`
+                    : 'No emails sent successfully.';
+                const failedMessage = failed.length
+                    ? `Failed to send to:\n${failed.map((r) => `${r.recipient} (Error: ${r.error})`).join('\n')}`
+                    : 'No emails failed.';
+
+                alert(`${successMessage}\n\n${failedMessage}`);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMS Sender</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right, #ff9a9e, #fad0c4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .back-button {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            background-color: #ff6f61;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .back-button:hover {
+            background-color: #ff3e2d;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+        h2 {
+            text-align: center;
+            color: #444;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #ff6f61;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #ff3e2d;
+        }
+        textarea {
+            resize: none;
+            height: 100px;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+        }
+        .button-group button {
+            width: 48%;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-button" onclick="window.location.href='/email';">Go to Email Page</button>
+    <div class="container">
+        <h2>SMS Sender</h2>
+        <label for="account-sid">Twilio Account SID</label>
+        <input type="text" id="account-sid" placeholder="Enter your Twilio SID">
+
+        <label for="auth-token">Auth Token</label>
+        <input type="password" id="auth-token" placeholder="Enter your Twilio Auth Token">
+
+        <label for="from-number">From Number</label>
+        <input type="text" id="from-number" placeholder="Enter Twilio phone number">
+
+        <label for="to-numbers">To Numbers (comma-separated)</label>
+        <textarea id="to-numbers" placeholder="e.g., +1234567890, +0987654321"></textarea>
+
+        <label for="sms-message">Message</label>
+        <textarea id="sms-message" placeholder="Type your SMS message here..."></textarea>
+
+        <div class="button-group">
+            <button id="test-sms">Test Twilio</button>
+            <button id="send-sms">Send SMS</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('test-sms').addEventListener('click', async () => {
+            const accountSid = document.getElementById('account-sid').value;
+            const authToken = document.getElementById('auth-token').value;
+
+            const response = await fetch('/test-twilio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountSid, authToken }),
+            });
+
+            const result = await response.json();
+            alert(result.success || result.error);
+        });
+
+        document.getElementById('send-sms').addEventListener('click', async () => {
+            const accountSid = document.getElementById('account-sid').value;
+            const authToken = document.getElementById('auth-token').value;
+            const from = document.getElementById('from-number').value;
+            const to = document.getElementById('to-numbers').value;
+            const message = document.getElementById('sms-message').value;
+
+            const response = await fetch('/send-sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountSid, authToken, from, to, message }),
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                alert(`Error: ${result.error}`);
+            } else {
+                const { success, failed } = result.results;
+                const successMessage = success.length
+                    ? `Successfully sent to:\n${success.map((r) => `${r.to} (Message SID: ${r.sid})`).join('\n')}`
+                    : 'No SMS sent successfully.';
+                const failedMessage = failed.length
+                    ? `Failed to send to:\n${failed.map((r) => `${r.to} (Error: ${r.error})`).join('\n')}`
+                    : 'No SMS failed.';
+
+                alert(`${successMessage}\n\n${failedMessage}`);
+            }
+        });
+    </script>
+</body>
+</html>
