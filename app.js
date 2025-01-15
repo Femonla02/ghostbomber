@@ -2,9 +2,10 @@ const express = require('express');
 const nodemailer = require('nodemailer');
 const bodyParser = require('body-parser');
 const path = require('path');
+const twilio = require('twilio');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(bodyParser.json());
@@ -34,7 +35,6 @@ app.post('/test-smtp', async (req, res) => {
             },
         });
 
-        // Test connection
         await transporter.verify();
         res.json({ success: 'SMTP settings are correct!' });
     } catch (error) {
@@ -54,46 +54,43 @@ app.post('/send', async (req, res) => {
         const transporter = nodemailer.createTransport({
             host: smtpHost,
             port: 587,
-            secure: false, // true for port 465, false for other ports
+            secure: false,
             auth: {
                 user: username,
                 pass: password,
             },
         });
 
-        const recipientList = recipients.split(',').map((email) => email.trim());
-        const results = { success: [], failed: [] };
+        const recipientList = recipients.split(',').map(email => email.trim());
 
-        for (const recipient of recipientList) {
-            try {
-                const mailOptions = {
-                    from: from,
-                    to: recipient,
-                    subject: subject,
-                    text: message,
-                };
+        const mailOptions = {
+            from: from,
+            bcc: recipientList,
+            subject: subject,
+            text: message,
+        };
 
-                const info = await transporter.sendMail(mailOptions);
-                results.success.push({ recipient, messageId: info.messageId });
-            } catch (error) {
-                results.failed.push({ recipient, error: error.message });
-            }
-        }
-
+        const info = await transporter.sendMail(mailOptions);
         res.json({
-            message: 'Email sending process completed.',
-            results,
+            message: 'Emails sent successfully.',
+            info,
+            recipients: recipientList,
         });
     } catch (error) {
         res.status(500).json({ error: `Failed to send email: ${error.message}` });
     }
 });
 
+// Route to test Twilio connection
 app.post('/test-twilio', (req, res) => {
     const { accountSid, authToken } = req.body;
 
+    if (!accountSid || !authToken) {
+        return res.status(400).json({ error: 'Missing required fields for Twilio settings.' });
+    }
+
     try {
-        const client = require('twilio')(accountSid, authToken);
+        const client = twilio(accountSid, authToken);
         client.api.accounts(accountSid)
             .fetch()
             .then(() => res.json({ success: 'Twilio credentials are valid.' }))
@@ -103,12 +100,18 @@ app.post('/test-twilio', (req, res) => {
     }
 });
 
+// Route to send SMS
 app.post('/send-sms', async (req, res) => {
     const { accountSid, authToken, from, to, message } = req.body;
 
+    if (!accountSid || !authToken || !from || !to || !message) {
+        return res.status(400).json({ error: 'Missing required fields for sending SMS.' });
+    }
+
     try {
         const client = twilio(accountSid, authToken);
-        const recipientList = to.split(',').map((number) => number.trim());
+        const recipientList = to.split(',').map(number => number.trim());
+
         const results = { success: [], failed: [] };
 
         for (const recipient of recipientList) {
@@ -130,7 +133,7 @@ app.post('/send-sms', async (req, res) => {
     }
 });
 
-// Serve HTML pages
+// Serve HTML pages for email and SMS interfaces
 app.get('/email', (req, res) => {
     res.sendFile(path.join(__dirname, 'ggg.html'));
 });
